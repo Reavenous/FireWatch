@@ -100,21 +100,21 @@ def nacti_ai_mozek():
 try:
     model, features, skalovac = nacti_ai_mozek()
 except FileNotFoundError:
-    st.error("❌ Nenalezen soubor s modelem (firewatch_model.pkl).")
+    st.error(" Nenalezen soubor s modelem (firewatch_model.pkl).")
     st.stop()
 
 # --- 4. ZADÁVÁNÍ SOUŘADNIC, MAPA A KALENDÁŘ ---
 col_mapa, col_vstupy = st.columns([2, 1])
 
 with col_vstupy:
-    st.markdown("### 📍 Zaměřovač lokality")
+    st.markdown("### Zaměřovač lokality")
     st.markdown("<div class='info-box'>Zadejte název, souřadnice, nebo klikněte do mapy.</div>", unsafe_allow_html=True)
     
     # VYHLEDÁVÁNÍ PODLE NÁZVU (Geocoding API)
     st.markdown("**1. Hledat podle názvu:**")
     hledany_text = st.text_input("Město, obec, les...", placeholder="Např. Českosaské Švýcarsko", label_visibility="collapsed")
     
-    if st.button("🔍 Najít na mapě"):
+    if st.button(" Najít na mapě"):
         if hledany_text:
             url_geo = f"https://geocoding-api.open-meteo.com/v1/search?name={hledany_text}&count=1&language=cs&format=json"
             try:
@@ -146,7 +146,7 @@ with col_vstupy:
     max_datum = dnes + datetime.timedelta(days=7) # API umožňuje 7 dní výhledu
     
     zvolene_datum = st.date_input(
-        "📅 Vyberte datum predikce:", 
+        " Vyberte datum predikce:", 
         value=dnes + datetime.timedelta(days=1), 
         min_value=dnes, 
         max_value=max_datum,
@@ -167,7 +167,7 @@ with col_vstupy:
         sim_slunce = st.slider("Simulovaná radiace (MJ/m²)", 0.0, 35.0, 25.0)
     
     st.markdown("<br>", unsafe_allow_html=True)
-    analyzovat_btn = st.button("🚨 SPUSTIT ANALÝZU RIZIKA")
+    analyzovat_btn = st.button(" SPUSTIT ANALÝZU RIZIKA")
 
 with col_mapa:
     st.markdown(f"### 🗺️ Satelitní pohled: **{st.session_state.misto}**")
@@ -225,7 +225,7 @@ if analyzovat_btn:
             pred_srazky = sim_srazky
             pred_vitr = sim_vitr
             pred_slunce = sim_slunce
-            st.warning("⚠️ Probíhá analýza v SIMULAČNÍM REŽIMU (vstupy z Open-Meteo přepsány manuálními daty).")
+            st.warning(" Probíhá analýza v SIMULAČNÍM REŽIMU (vstupy z Open-Meteo přepsány manuálními daty).")
         else:
             pred_teplota = api_teplota
             pred_srazky = api_srazky
@@ -236,9 +236,9 @@ if analyzovat_btn:
 
         with res_col1:
             if simulace_zapnuta:
-                st.subheader(f"📡 Použité Simulační Vstupy (Pro {zvolene_datum.strftime('%d. %m. %Y')})")
+                st.subheader(f" Použité Simulační Vstupy (Pro {zvolene_datum.strftime('%d. %m. %Y')})")
             else:
-                st.subheader(f"📡 Meteorologický výhled pro {zvolene_datum.strftime('%d. %m. %Y')}")
+                st.subheader(f" Meteorologický výhled pro {zvolene_datum.strftime('%d. %m. %Y')}")
                 
             m1, m2 = st.columns(2)
             m3, m4 = st.columns(2)
@@ -276,7 +276,7 @@ if analyzovat_btn:
             st.altair_chart(graf, use_container_width=True)
 
         with res_col2:
-            st.subheader("🧠 Rozhodnutí Umělé Inteligence")
+            st.subheader(" Rozhodnutí Umělé Inteligence")
             
             vstupni_data = pd.DataFrame([{
                 "lat": st.session_state.lat,
@@ -298,15 +298,15 @@ if analyzovat_btn:
             st.progress(int(pravdepodobnost))
 
             if pravdepodobnost >= 70:
-                st.error("🔥 KRITICKÉ RIZIKO POŽÁRU DETEKOVÁNO! 🔥")
+                st.error(" KRITICKÉ RIZIKO POŽÁRU DETEKOVÁNO! ")
                 st.warning("Model identifikoval vzorec meteorologických jevů s extrémní shodou pro vznik lesních požárů. Doporučen 3. stupeň požárního poplachu.")
                 stupen_rizika = "KRITICKÉ"
             elif pravdepodobnost >= 30:
-                st.warning("⚠️ ZVÝŠENÉ RIZIKO POŽÁRU")
+                st.warning(" ZVÝŠENÉ RIZIKO POŽÁRU")
                 st.info("Podmínky začínají být příhodné pro šíření ohně. Doporučena zvýšená ostražitost hlídek v oblasti.")
                 stupen_rizika = "ZVÝŠENÉ"
             else:
-                st.success("✅ OBLAST JE BEZPEČNÁ")
+                st.success(" OBLAST JE BEZPEČNÁ")
                 st.info("Algoritmus nevyhodnotil aktuální kombinaci jevů jako nebezpečnou.")
                 stupen_rizika = "BEZPEČNO"
 
@@ -333,7 +333,7 @@ if analyzovat_btn:
         # --- NOVINKA: FYZIKÁLNÍ KALKULAČKA ŠÍŘENÍ A KRIZOVÉ ŘÍZENÍ ---
         if pravdepodobnost >= 30:
             st.markdown("---")
-            st.subheader("⚠️ Dynamika možného požáru (Fyzikální odhad)")
+            st.subheader(" Dynamika možného požáru (Fyzikální odhad)")
             
             # Zjednodušený výpočet šíření podle Rothermelova modelu vlivu větru a teploty
             rychlost_sireni_m_min = max(0.5, (pred_vitr * 0.4) + (pred_teplota * 0.3) - (pred_srazky * 2))
@@ -341,14 +341,14 @@ if analyzovat_btn:
             
             dyn_c1, dyn_c2 = st.columns(2)
             with dyn_c1:
-                st.info(f"**Odhadovaná rychlost šíření:**\n\n🔥 **{rychlost_sireni_m_min:.1f}** metrů za minutu")
+                st.info(f"**Odhadovaná rychlost šíření:**\n\n **{rychlost_sireni_m_min:.1f}** metrů za minutu")
             with dyn_c2:
                 st.warning(f"**Evakuační perimetr (po 2 hod):**\n\n🚧 **{perimetr_2h_metry:.0f}** metrů od ohniska")
 
         # KRIZOVÉ TLAČÍTKO PRO IZS
         if pravdepodobnost >= 70:
             st.markdown("---")
-            st.markdown("### 🚨 AKCE: KRIZOVÉ ŘÍZENÍ")
+            st.markdown("### AKCE: KRIZOVÉ ŘÍZENÍ")
             if st.button("ODESLAT VAROVÁNÍ DO SYSTÉMU IZS (Integrovaný Záchranný Systém)"):
                 with st.spinner("Navazuji šifrované spojení s dispečinkem IZS..."):
                     import time as time_module
@@ -357,12 +357,12 @@ if analyzovat_btn:
                     time_module.sleep(1.5)
                     st.toast("Odesílám souřadnice na krajské velitelství", icon="📡")
                     time_module.sleep(1.5)
-                st.success(f"✅ Hlášení pro souřadnice [{st.session_state.lat}, {st.session_state.lon}] bylo přijato operačním střediskem. Kód události: FW-{datetime.datetime.now().strftime('%y%m%d-%H%M')}")
+                st.success(f" Hlášení pro souřadnice [{st.session_state.lat}, {st.session_state.lon}] bylo přijato operačním střediskem. Kód události: FW-{datetime.datetime.now().strftime('%y%m%d-%H%M')}")
                 st.balloons() # Oslavná animace úspěšného odeslání
 
         # --- 7. EXPERTNÍ DIAGNOSTIKA AI ---
         st.markdown("---")
-        with st.expander("⚙️ Technická diagnostika AI modelu (Pro experty / Komisi)"):
+        with st.expander(" Technická diagnostika AI modelu (Pro experty / Komisi)"):
             st.markdown("Tato sekce odkrývá 'černou skříňku' umělé inteligence a ukazuje její interní parametry.")
             
             diag_c1, diag_c2 = st.columns(2)
@@ -388,7 +388,7 @@ Finální prahová aktivace: {'Třída 1' if prob_pozar > 0.5 else 'Třída 0'}
 
         # --- 8. EXPORT HLÁŠENÍ (PDF/TXT) ---
         st.markdown("---")
-        st.subheader("📄 Generování hlášení pro záchrannou jednotku")
+        st.subheader(" Generování hlášení pro záchrannou jednotku")
         
         aktualni_cas = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
@@ -421,7 +421,7 @@ Vygeneroval systém FireWatch AI (Autor: Alexandre Basseville)
             report_text = report_text.replace("--- ZÁVĚR UMĚLÉ INTELIGENCE ---", f"--- DYNAMIKA ŠÍŘENÍ ---\nOdhad rychlosti:        {rychlost_sireni_m_min:.1f} m/min\nEvakuační perimetr (2h):  {perimetr_2h_metry:.0f} m\n\n--- ZÁVĚR UMĚLÉ INTELIGENCE ---")
 
         st.download_button(
-            label="📥 Stáhnout textové hlášení pro jednotku (TXT)",
+            label=" Stáhnout textové hlášení pro jednotku (TXT)",
             data=report_text,
             file_name=f"FireWatch_Report_{st.session_state.misto}_{zvolene_datum.strftime('%Y%m%d')}.txt",
             mime="text/plain"
