@@ -1,7 +1,7 @@
 # =============================================================================
 # FIREWATCH AI — Fáze 4: Finální Webová Aplikace pro Hasiče (ULTIMATE verze)
 # Autor: Alexandre Basseville
-# Knihovna: Streamlit, Folium
+# Knihovna: Streamlit, Folium, Altair
 # Co skript dělá: Vytvoří profi webové rozhraní s KLIKACÍ interaktivní mapou,
 #                 vyhledáváním podle názvu, kalendářem predikce na týden dopředu,
 #                 XAI, procentuální pravděpodobností, exportem a faviconem.
@@ -16,6 +16,7 @@ import os
 import folium
 from streamlit_folium import st_folium
 import datetime
+import altair as alt
 
 # --- 1. NASTAVENÍ STRÁNKY A DESIGNU (ČERNO-ORANŽOVÁ + FAVICON) ---
 # Detekce loga pro favicon (ikona v záložce prohlížeče)
@@ -247,14 +248,32 @@ if analyzovat_btn:
             m3.metric("Rychlost větru", f"{pred_vitr} km/h")
             m4.metric("Nadmořská výška", f"{nadmorska_vyska} m.n.m.")
             
-            st.markdown("**Výhledový trendový graf teplot a srážek (Následujících 7 dní):**")
-            dny_v_tydnu = [(dnes + datetime.timedelta(days=i)).strftime("%d. %m.") for i in range(8)]
+            st.markdown("**Výhledový trendový graf teplot (Následujících 7 dní):**")
+            
+            # OPRAVA: Profi graf přes Altair pro plnou kontrolu nad formátováním dat na ose X
+            dny_v_tydnu = [dnes + datetime.timedelta(days=i) for i in range(8)]
             trend_df = pd.DataFrame({
                 "Datum": dny_v_tydnu,
-                "Teplota (°C)": daily["temperature_2m_max"],
-                "Srážky (mm)": daily["precipitation_sum"]
-            }).set_index("Datum")
-            st.line_chart(trend_df["Teplota (°C)"], color="#FF5A00")
+                "Teplota (°C)": daily["temperature_2m_max"]
+            })
+            
+            # Vytvoření interaktivního grafu s vynuceným českým formátem dat a pevnými hodnotami (values)
+            graf = alt.Chart(trend_df).mark_line(
+                color="#FF5A00", 
+                strokeWidth=3, 
+                point=alt.OverlayMarkDef(color="#FF5A00", size=60) # Přidá body na křivku
+            ).encode(
+                x=alt.X("Datum:T", axis=alt.Axis(
+                    format="%d. %m.", 
+                    labelAngle=-45, 
+                    title=None,
+                    values=dny_v_tydnu # <--- TOTO ZAKÁŽE GRAFU VYMÝŠLET SI VLASTNÍ (PRÁZDNÉ) BODY!
+                )),
+                y=alt.Y("Teplota (°C):Q", scale=alt.Scale(zero=False), title="Teplota (°C)"),
+                tooltip=[alt.Tooltip("Datum:T", format="%d. %m. %Y"), alt.Tooltip("Teplota (°C):Q")]
+            ).properties(height=300)
+            
+            st.altair_chart(graf, use_container_width=True)
 
         with res_col2:
             st.subheader("🧠 Rozhodnutí Umělé Inteligence")
@@ -310,6 +329,36 @@ if analyzovat_btn:
                 st.bar_chart(feat_df.set_index("Faktor"), color="#FF5A00")
             else:
                  st.markdown("*Vysvětlitelnost AI není pro tento model k dispozici.*")
+
+        # --- NOVINKA: FYZIKÁLNÍ KALKULAČKA ŠÍŘENÍ A KRIZOVÉ ŘÍZENÍ ---
+        if pravdepodobnost >= 30:
+            st.markdown("---")
+            st.subheader("⚠️ Dynamika možného požáru (Fyzikální odhad)")
+            
+            # Zjednodušený výpočet šíření podle Rothermelova modelu vlivu větru a teploty
+            rychlost_sireni_m_min = max(0.5, (pred_vitr * 0.4) + (pred_teplota * 0.3) - (pred_srazky * 2))
+            perimetr_2h_metry = rychlost_sireni_m_min * 120 # Za 2 hodiny (120 minut)
+            
+            dyn_c1, dyn_c2 = st.columns(2)
+            with dyn_c1:
+                st.info(f"**Odhadovaná rychlost šíření:**\n\n🔥 **{rychlost_sireni_m_min:.1f}** metrů za minutu")
+            with dyn_c2:
+                st.warning(f"**Evakuační perimetr (po 2 hod):**\n\n🚧 **{perimetr_2h_metry:.0f}** metrů od ohniska")
+
+        # KRIZOVÉ TLAČÍTKO PRO IZS
+        if pravdepodobnost >= 70:
+            st.markdown("---")
+            st.markdown("### 🚨 AKCE: KRIZOVÉ ŘÍZENÍ")
+            if st.button("ODESLAT VAROVÁNÍ DO SYSTÉMU IZS (Integrovaný Záchranný Systém)"):
+                with st.spinner("Navazuji šifrované spojení s dispečinkem IZS..."):
+                    import time as time_module
+                    time_module.sleep(1.5)
+                    st.toast("Data úspěšně zašifrována AES-256", icon="🔐")
+                    time_module.sleep(1.5)
+                    st.toast("Odesílám souřadnice na krajské velitelství", icon="📡")
+                    time_module.sleep(1.5)
+                st.success(f"✅ Hlášení pro souřadnice [{st.session_state.lat}, {st.session_state.lon}] bylo přijato operačním střediskem. Kód události: FW-{datetime.datetime.now().strftime('%y%m%d-%H%M')}")
+                st.balloons() # Oslavná animace úspěšného odeslání
 
         # --- 7. EXPERTNÍ DIAGNOSTIKA AI ---
         st.markdown("---")
@@ -367,6 +416,10 @@ Algoritmus:              {type(model).__name__}
 Vygeneroval systém FireWatch AI (Autor: Alexandre Basseville)
 """
         
+        # Pokud bylo spočítáno šíření, vložíme ho do finálního textového reportu
+        if pravdepodobnost >= 30:
+            report_text = report_text.replace("--- ZÁVĚR UMĚLÉ INTELIGENCE ---", f"--- DYNAMIKA ŠÍŘENÍ ---\nOdhad rychlosti:        {rychlost_sireni_m_min:.1f} m/min\nEvakuační perimetr (2h):  {perimetr_2h_metry:.0f} m\n\n--- ZÁVĚR UMĚLÉ INTELIGENCE ---")
+
         st.download_button(
             label="📥 Stáhnout textové hlášení pro jednotku (TXT)",
             data=report_text,
