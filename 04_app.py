@@ -80,7 +80,7 @@ with col_logo:
     if os.path.exists("logo.png"):
         st.image("logo.png", use_container_width=True)
 with col_text:
-    st.markdown("<h1 style='text-align: left; font-size: 3em;'>🔥 FIREWATCH AI COMMAND CENTER</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: left; font-size: 3em;'> FIREWATCH AI COMMAND CENTER</h1>", unsafe_allow_html=True)
     st.markdown("<p style='text-align: left; color: #AAAAAA; font-size: 1.2em;'>Pokročilý systém predikce lesních požárů s interaktivní mapou, kalendářem a AI analýzou</p>", unsafe_allow_html=True)
 st.markdown("---")
 
@@ -157,7 +157,7 @@ with col_vstupy:
 
     st.markdown("---")
     st.markdown("**4. Režim simulace (Co kdyby?):**")
-    simulace_zapnuta = st.checkbox("🛠️ Povolit manuální nastavení počasí pro predikci")
+    simulace_zapnuta = st.checkbox(" Povolit manuální nastavení počasí pro predikci")
     
     if simulace_zapnuta:
         st.info("Předpověď bude ignorována. AI použije vaše manuální hodnoty.")
@@ -170,7 +170,7 @@ with col_vstupy:
     analyzovat_btn = st.button(" SPUSTIT ANALÝZU RIZIKA")
 
 with col_mapa:
-    st.markdown(f"### 🗺️ Satelitní pohled: **{st.session_state.misto}**")
+    st.markdown(f"###  Satelitní pohled: **{st.session_state.misto}**")
     st.caption("Kliknutím kamkoliv do mapy změníte vyšetřovanou oblast.")
     
     m = folium.Map(location=[st.session_state.lat, st.session_state.lon], zoom_start=11, tiles="OpenStreetMap")
