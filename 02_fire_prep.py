@@ -21,7 +21,7 @@ if not os.path.exists(vstupni_soubor):
     exit()
 
 df = pd.read_csv(vstupni_soubor)
-print(f"📂 Načteno záznamů: {len(df)}")
+print(f" Načteno záznamů: {len(df)}")
 
 # 2. ČIŠTĚNÍ DAT
 # Odstraníme řádky, kde chybí nějaká hodnota (NaN)
@@ -30,7 +30,7 @@ df = df.dropna()
 # Odstraníme sloupec 'datum', protože strojové učení neumí číst text
 if "datum" in df.columns:
     df = df.drop(columns=["datum"])
-    print("✅ Odstraněn textový sloupec 'datum' (model potřebuje jen čísla).")
+    print(" Odstraněn textový sloupec 'datum' (model potřebuje jen čísla).")
 
 # 3. ŠKÁLOVÁNÍ DAT (MinMaxScaler)
 # Chceme srovnat všechny veličiny (metry, stupně, kilometry v hodině) 
@@ -62,6 +62,6 @@ vystupni_soubor = os.path.join(vystupni_slozka, "fire_processed.csv")
 df.to_csv(vystupni_soubor, index=False)
 
 print("\n" + "=" * 60)
-print(f"🎉 Hotovo! Vyčištěná data uložena do: {vystupni_soubor}")
+print(f" Hotovo! Vyčištěná data uložena do: {vystupni_soubor}")
 print("   Nyní jsou data dokonale připravena pro trénink AI v Google Colabu.")
 print("=" * 60)
