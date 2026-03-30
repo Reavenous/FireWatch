@@ -2,9 +2,6 @@
 # FIREWATCH AI — Fáze 4: Finální Webová Aplikace pro Hasiče (ULTIMATE verze)
 # Autor: Alexandre Basseville
 # Knihovna: Streamlit, Folium, Altair
-# Co skript dělá: Vytvoří profi webové rozhraní s KLIKACÍ interaktivní mapou,
-#                 vyhledáváním podle názvu, kalendářem predikce na týden dopředu,
-#                 XAI, procentuální pravděpodobností, exportem a faviconem.
 # =============================================================================
 
 import streamlit as st
@@ -18,9 +15,20 @@ from streamlit_folium import st_folium
 import datetime
 import altair as alt
 
+# --- DYNAMICKÉ CESTY (NEPRŮSTŘELNÉ ŘEŠENÍ) ---
+# Zjistí, kde leží tento skript (složka src) a odvodí z toho hlavní složku projektu
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
+
+# Bezpečné sestavení absolutních cest podle naší vendor architektury
+MODEL_PATH = os.path.join(PROJECT_ROOT, "vendor", "firewatch_model.pkl")
+FEATURES_PATH = os.path.join(PROJECT_ROOT, "vendor", "firewatch_features.pkl")
+IMPORTANCES_PATH = os.path.join(PROJECT_ROOT, "vendor", "firewatch_importances.pkl")
+RAW_DATA_PATH = os.path.join(PROJECT_ROOT, "data", "raw", "fire_raw.csv")
+LOGO_PATH = os.path.join(PROJECT_ROOT, "vendor", "logo.png")
+
 # --- 1. NASTAVENÍ STRÁNKY A DESIGNU (ČERNO-ORANŽOVÁ + FAVICON) ---
-# Detekce loga pro favicon (ikona v záložce prohlížeče)
-ikonka = "logo.png" if os.path.exists("logo.png") else "🔥"
+ikonka = LOGO_PATH if os.path.exists(LOGO_PATH) else "🔥"
 
 st.set_page_config(page_title="FireWatch AI Panel", page_icon=ikonka, layout="wide")
 
@@ -66,7 +74,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- INICIALIZACE STAVU APLIKACE (Paměť pro klikání a vyhledávání) ---
+# --- INICIALIZACE STAVU APLIKACE ---
 if "lat" not in st.session_state:
     st.session_state.lat = 50.87
 if "lon" not in st.session_state:
@@ -77,8 +85,8 @@ if "misto" not in st.session_state:
 # --- 2. HLAVIČKA APLIKACE ---
 col_logo, col_text = st.columns([1, 6])
 with col_logo:
-    if os.path.exists("logo.png"):
-        st.image("logo.png", use_container_width=True)
+    if os.path.exists(LOGO_PATH):
+        st.image(LOGO_PATH, use_container_width=True)
 with col_text:
     st.markdown("<h1 style='text-align: left; font-size: 3em;'> FIREWATCH AI COMMAND CENTER</h1>", unsafe_allow_html=True)
     st.markdown("<p style='text-align: left; color: #AAAAAA; font-size: 1.2em;'>Pokročilý systém predikce lesních požárů s interaktivní mapou, kalendářem a AI analýzou</p>", unsafe_allow_html=True)
@@ -87,10 +95,11 @@ st.markdown("---")
 # --- 3. NAČTENÍ MODELU ---
 @st.cache_resource
 def nacti_ai_mozek():
-    model = joblib.load("firewatch_model.pkl")
-    features = joblib.load("firewatch_features.pkl")
+    # Načítáme přes naše neprůstřelné dynamické cesty
+    model = joblib.load(MODEL_PATH)
+    features = joblib.load(FEATURES_PATH)
     
-    df_raw = pd.read_csv("data/raw/fire_raw.csv")
+    df_raw = pd.read_csv(RAW_DATA_PATH)
     sloupce_ke_skalovani = ["lat", "lon", "nadmorska_vyska_m", "teplota_max_C", "srazky_mm", "vitr_max_kmh", "slunce_MJm2"]
     skalovac = MinMaxScaler()
     skalovac.fit(df_raw[sloupce_ke_skalovani])
@@ -99,15 +108,17 @@ def nacti_ai_mozek():
 
 try:
     model, features, skalovac = nacti_ai_mozek()
-except FileNotFoundError:
-    st.error(" Nenalezen soubor s modelem (firewatch_model.pkl).")
+except Exception as e:
+    st.error(" Kritická chyba: Systém nemůže najít potřebné datové soubory.")
+    st.error(f"Detail chyby: {e}")
+    st.info("Zkontrolujte, zda jste přesunuli modely do složky 'vendor' a surová data do 'data/raw'!")
     st.stop()
 
 # --- 4. ZADÁVÁNÍ SOUŘADNIC, MAPA A KALENDÁŘ ---
 col_mapa, col_vstupy = st.columns([2, 1])
 
 with col_vstupy:
-    st.markdown("### Zaměřovač lokality")
+    st.markdown("###  Zaměřovač lokality")
     st.markdown("<div class='info-box'>Zadejte název, souřadnice, nebo klikněte do mapy.</div>", unsafe_allow_html=True)
     
     # VYHLEDÁVÁNÍ PODLE NÁZVU (Geocoding API)
@@ -140,10 +151,10 @@ with col_vstupy:
         st.session_state.misto = "Vlastní souřadnice"
         
     st.markdown("---")
-    # NOVINKA: INTERAKTIVNÍ KALENDÁŘ
+    # INTERAKTIVNÍ KALENDÁŘ
     st.markdown("**3. Časový horizont analýzy:**")
     dnes = datetime.date.today()
-    max_datum = dnes + datetime.timedelta(days=7) # API umožňuje 7 dní výhledu
+    max_datum = dnes + datetime.timedelta(days=7)
     
     zvolene_datum = st.date_input(
         " Vyberte datum predikce:", 
@@ -152,7 +163,6 @@ with col_vstupy:
         max_value=max_datum,
         help="Lze analyzovat aktuální situaci až 7 dní dopředu."
     )
-    # Výpočet indexu pro pole z API (0 = dnes, 1 = zítra, atd.)
     den_index = (zvolene_datum - dnes).days
 
     st.markdown("---")
@@ -167,7 +177,7 @@ with col_vstupy:
         sim_slunce = st.slider("Simulovaná radiace (MJ/m²)", 0.0, 35.0, 25.0)
     
     st.markdown("<br>", unsafe_allow_html=True)
-    analyzovat_btn = st.button(" SPUSTIT ANALÝZU RIZIKA")
+    analyzovat_btn = st.button("🚨 SPUSTIT ANALÝZU RIZIKA")
 
 with col_mapa:
     st.markdown(f"###  Satelitní pohled: **{st.session_state.misto}**")
@@ -199,7 +209,6 @@ if analyzovat_btn:
     st.markdown("---")
     
     with st.spinner('Navazuji spojení s meteorologickou družicí a inicializuji AI model...'):
-        # API nyní stahuje 8 dní, aby pokrylo celý náš kalendář
         url = (f"https://api.open-meteo.com/v1/forecast?"
                f"latitude={st.session_state.lat}&longitude={st.session_state.lon}&"
                f"daily=temperature_2m_max,precipitation_sum,wind_speed_10m_max,shortwave_radiation_sum&"
@@ -210,7 +219,6 @@ if analyzovat_btn:
             nadmorska_vyska = odpoved.get("elevation", 0)
             daily = odpoved["daily"]
             
-            # Data si vytáhneme podle toho, jaký den uživatel vybral v kalendáři
             api_teplota = daily["temperature_2m_max"][den_index]
             api_srazky = daily["precipitation_sum"][den_index]
             api_vitr = daily["wind_speed_10m_max"][den_index]
@@ -250,24 +258,22 @@ if analyzovat_btn:
             
             st.markdown("**Výhledový trendový graf teplot (Následujících 7 dní):**")
             
-            # OPRAVA: Profi graf přes Altair pro plnou kontrolu nad formátováním dat na ose X
             dny_v_tydnu = [dnes + datetime.timedelta(days=i) for i in range(8)]
             trend_df = pd.DataFrame({
                 "Datum": dny_v_tydnu,
                 "Teplota (°C)": daily["temperature_2m_max"]
             })
             
-            # Vytvoření interaktivního grafu s vynuceným českým formátem dat a pevnými hodnotami (values)
             graf = alt.Chart(trend_df).mark_line(
                 color="#FF5A00", 
                 strokeWidth=3, 
-                point=alt.OverlayMarkDef(color="#FF5A00", size=60) # Přidá body na křivku
+                point=alt.OverlayMarkDef(color="#FF5A00", size=60)
             ).encode(
                 x=alt.X("Datum:T", axis=alt.Axis(
                     format="%d. %m.", 
                     labelAngle=-45, 
                     title=None,
-                    values=dny_v_tydnu # <--- TOTO ZAKÁŽE GRAFU VYMÝŠLET SI VLASTNÍ (PRÁZDNÉ) BODY!
+                    values=dny_v_tydnu
                 )),
                 y=alt.Y("Teplota (°C):Q", scale=alt.Scale(zero=False), title="Teplota (°C)"),
                 tooltip=[alt.Tooltip("Datum:T", format="%d. %m. %Y"), alt.Tooltip("Teplota (°C):Q")]
@@ -298,7 +304,7 @@ if analyzovat_btn:
             st.progress(int(pravdepodobnost))
 
             if pravdepodobnost >= 70:
-                st.error(" KRITICKÉ RIZIKO POŽÁRU DETEKOVÁNO! ")
+                st.error(" KRITICKÉ RIZIKO POŽÁRU DETEKOVÁNO! 🔥")
                 st.warning("Model identifikoval vzorec meteorologických jevů s extrémní shodou pro vznik lesních požárů. Doporučen 3. stupeň požárního poplachu.")
                 stupen_rizika = "KRITICKÉ"
             elif pravdepodobnost >= 30:
@@ -313,8 +319,8 @@ if analyzovat_btn:
             st.markdown("**Vysvětlitelnost AI (Proč se tak rozhodla):**")
             
             importances = None
-            if os.path.exists("firewatch_importances.pkl"):
-                importances = joblib.load("firewatch_importances.pkl")
+            if os.path.exists(IMPORTANCES_PATH):
+                importances = joblib.load(IMPORTANCES_PATH)
                 st.caption("*(Pokročilá XAI analýza: Vliv vypočítán pomocí Permutation Importance)*")
             elif hasattr(model, 'feature_importances_'):
                 importances = model.feature_importances_
@@ -330,25 +336,24 @@ if analyzovat_btn:
             else:
                  st.markdown("*Vysvětlitelnost AI není pro tento model k dispozici.*")
 
-        # --- NOVINKA: FYZIKÁLNÍ KALKULAČKA ŠÍŘENÍ A KRIZOVÉ ŘÍZENÍ ---
+        # --- FYZIKÁLNÍ KALKULAČKA ŠÍŘENÍ A KRIZOVÉ ŘÍZENÍ ---
         if pravdepodobnost >= 30:
             st.markdown("---")
             st.subheader(" Dynamika možného požáru (Fyzikální odhad)")
             
-            # Zjednodušený výpočet šíření podle Rothermelova modelu vlivu větru a teploty
             rychlost_sireni_m_min = max(0.5, (pred_vitr * 0.4) + (pred_teplota * 0.3) - (pred_srazky * 2))
-            perimetr_2h_metry = rychlost_sireni_m_min * 120 # Za 2 hodiny (120 minut)
+            perimetr_2h_metry = rychlost_sireni_m_min * 120 
             
             dyn_c1, dyn_c2 = st.columns(2)
             with dyn_c1:
-                st.info(f"**Odhadovaná rychlost šíření:**\n\n **{rychlost_sireni_m_min:.1f}** metrů za minutu")
+                st.info(f"**Odhadovaná rychlost šíření:**\n\n🔥 **{rychlost_sireni_m_min:.1f}** metrů za minutu")
             with dyn_c2:
                 st.warning(f"**Evakuační perimetr (po 2 hod):**\n\n🚧 **{perimetr_2h_metry:.0f}** metrů od ohniska")
 
         # KRIZOVÉ TLAČÍTKO PRO IZS
         if pravdepodobnost >= 70:
             st.markdown("---")
-            st.markdown("### AKCE: KRIZOVÉ ŘÍZENÍ")
+            st.markdown("###  AKCE: KRIZOVÉ ŘÍZENÍ")
             if st.button("ODESLAT VAROVÁNÍ DO SYSTÉMU IZS (Integrovaný Záchranný Systém)"):
                 with st.spinner("Navazuji šifrované spojení s dispečinkem IZS..."):
                     import time as time_module
@@ -357,8 +362,8 @@ if analyzovat_btn:
                     time_module.sleep(1.5)
                     st.toast("Odesílám souřadnice na krajské velitelství", icon="📡")
                     time_module.sleep(1.5)
-                st.success(f" Hlášení pro souřadnice [{st.session_state.lat}, {st.session_state.lon}] bylo přijato operačním střediskem. Kód události: FW-{datetime.datetime.now().strftime('%y%m%d-%H%M')}")
-                st.balloons() # Oslavná animace úspěšného odeslání
+                st.success(f"Hlášení pro souřadnice [{st.session_state.lat}, {st.session_state.lon}] bylo přijato operačním střediskem. Kód události: FW-{datetime.datetime.now().strftime('%y%m%d-%H%M')}")
+                st.balloons() 
 
         # --- 7. EXPERTNÍ DIAGNOSTIKA AI ---
         st.markdown("---")
@@ -416,7 +421,6 @@ Algoritmus:              {type(model).__name__}
 Vygeneroval systém FireWatch AI (Autor: Alexandre Basseville)
 """
         
-        # Pokud bylo spočítáno šíření, vložíme ho do finálního textového reportu
         if pravdepodobnost >= 30:
             report_text = report_text.replace("--- ZÁVĚR UMĚLÉ INTELIGENCE ---", f"--- DYNAMIKA ŠÍŘENÍ ---\nOdhad rychlosti:        {rychlost_sireni_m_min:.1f} m/min\nEvakuační perimetr (2h):  {perimetr_2h_metry:.0f} m\n\n--- ZÁVĚR UMĚLÉ INTELIGENCE ---")
 
