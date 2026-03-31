@@ -1,57 +1,53 @@
-# =============================================================================
+
 # FIREWATCH AI — Fáze 1: Sběr meteorologických dat
-# =============================================================================
+ 
 # Co tento skript dělá:
 #   1. Projde mapovou síť (grid) České republiky bod po bodu
 #   2. Pro každý bod stáhne historická data z bezplatného Open-Meteo API
 #   3. Každý den ohodnotí — je v ten den kritické riziko požáru? (1 = ANO, 0 = NE)
 #   4. Výsledek uloží do CSV souboru pro další zpracování (trénování modelu)
-#
-# =============================================================================
 
-import requests          # Knihovna pro stahování dat z internetu
-import pandas as pd      # Knihovna pro práci s tabulkami
-import time              # Knihovna pro pauzy mezi požadavky
-import os                # Knihovna pro práci se složkami
+ 
 
-# =============================================================================
+import requests          
+import pandas as pd      
+import time              
+import os                
+
+
 # SEKCE 1: NASTAVENÍ PROJEKTU (konstanty)
-# =============================================================================
 
-# Stahujeme 2 roky historických dat (2022 a 2023)
+
+
 DATUM_START = "2022-01-01"
 DATUM_KONEC = "2023-12-31"
 
 # Bounding box = obdélník ohraničující celé území ČR
-LAT_MIN  = 48.6   # jih
-LAT_MAX  = 51.0   # sever
-LON_MIN  = 12.1   # západ
-LON_MAX  = 18.8   # východ
-KROK     = 0.5    # krok sítě ve stupních
+LAT_MIN  = 48.6   
+LAT_MAX  = 51.0   
+LON_MIN  = 12.1   
+LON_MAX  = 18.8   
+KROK     = 0.5   
 
 # --- Fyzikální prahy pro rozhodnutí: RIZIKO POŽÁRU = 1 ---
-PRAH_TEPLOTA    = 28.0   # °C — maximální teplota vzduchu
-PRAH_SRAZKY     = 0.0    # mm — denní srážky (0 = úplné sucho)
-PRAH_VITR       = 15.0   # km/h — rychlost větru (šíření ohně)
-PRAH_SLUNCE     = 20.0   # MJ/m² — přímé sluneční záření
+PRAH_TEPLOTA    = 28.0   
+PRAH_SRAZKY     = 0.0    
+PRAH_VITR       = 15.0   
+PRAH_SLUNCE     = 20.0   
 
-# Vyvažování datasetu: bereme pouze každý 20. bezpečný den
+# Vyvažování datasetu
 KAZDÝ_NTY_BEZPECNY = 20  
 
 VÝSTUPNÍ_SLOŽKA = os.path.join("data", "raw")
 VÝSTUPNÍ_SOUBOR = os.path.join(VÝSTUPNÍ_SLOŽKA, "fire_raw.csv")
 
-# =============================================================================
 # SEKCE 2: PŘÍPRAVA PROSTŘEDÍ
-# =============================================================================
 
 if not os.path.exists(VÝSTUPNÍ_SLOŽKA):
     os.makedirs(VÝSTUPNÍ_SLOŽKA, exist_ok=True)
     print(f"[INFO] Vytvořena složka: {VÝSTUPNÍ_SLOŽKA}")
 
-# =============================================================================
 # SEKCE 3: DEFINICE FUNKCE PRO VOLÁNÍ API
-# =============================================================================
 
 def stahni_data_pro_bod(lat, lon, datum_start, datum_konec):
     """Stáhne meteorologická data pro jeden zeměpisný bod."""
@@ -79,9 +75,8 @@ def stahni_data_pro_bod(lat, lon, datum_start, datum_konec):
     except:
         return None
 
-# =============================================================================
 # SEKCE 4: HLAVNÍ LOGIKA — průchod gridem
-# =============================================================================
+
 
 vsechny_zaznamy = []
 pocet_bodu_celkem    = 0
@@ -89,9 +84,7 @@ pocet_bodu_uspesnych = 0
 pocet_riziko_dni     = 0
 pocet_bezpecnych_dni = 0
 
-print("=" * 60)
 print("   FIREWATCH AI — Spouštím stahování dat")
-print("=" * 60)
 
 lat_aktualni = LAT_MIN
 while lat_aktualni <= LAT_MAX:
@@ -173,9 +166,7 @@ while lat_aktualni <= LAT_MAX:
 
     lat_aktualni = round(lat_aktualni + KROK, 1)
 
-# =============================================================================
 # SEKCE 5: ULOŽENÍ VÝSLEDKŮ DO CSV SOUBORU
-# =============================================================================
 
 print("\n" + "=" * 60)
 print("   Průchod gridem dokončen. Ukládám výsledky...")
